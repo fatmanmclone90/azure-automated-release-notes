@@ -1,0 +1,180 @@
+trigger:
+  tags:
+    include:
+      - "release/*"
+  branches:
+    include:
+      - main
+
+resources:
+  repositories:
+    - repository: wiki
+      type: git
+      name: release-notes/release-notes.wiki
+      ref: wikiMaster
+
+parameters:
+  - name: passTests
+    displayName: Should the pipeline pass.
+    type: boolean
+    default: true
+
+variables:
+  - name: version_major
+    value: "1"
+  - name: version_minor
+    value: "0"
+
+stages:
+  - stage: Prerequisites
+    displayName: Prerequisites
+    jobs:
+      - template: templates/update-build-number.yml
+        parameters:
+          version_major: ${{ variables.version_major }}
+          version_minor: ${{ variables.version_minor }}
+
+  - stage: Test
+    dependsOn: Prerequisites
+    variables:
+      - name: PLAYWRIGHT_JUNIT_OUTPUT_NAME
+        value: results.xml
+    jobs:
+      - job: Test
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: "21.x"
+            displayName: "Install Node.js"
+
+          - script: |
+              npm ci
+            workingDirectory: "src"
+            displayName: "Install dependencies"
+
+          - script: |
+              npx playwright install --with-deps
+            workingDirectory: "src"
+            displayName: "Install Playwright Browsers"
+
+          - script: |
+              npx playwright test
+            workingDirectory: "src"
+            displayName: "Run Playwright tests"
+
+          - publish: $(Build.sourcesdirectory)/src/results.xml
+            artifact: results.xml
+            condition: always()
+            displayName: Publish Test Results # Not required
+
+          - task: PublishTestResults@2
+            inputs:
+              testResultsFormat: "JUnit"
+              testResultsFiles: $(Build.sourcesdirectory)/src/results.xml
+
+          - ${{ if eq(parameters.passTests, false) }}:
+              - bash: |
+                  echo "##[error]Forcing pipeline to fail." 
+                  exit 1;
+                displayName: Run tests (fake)
+
+  - stage: ReleaseNotes
+    dependsOn: Test
+    jobs:
+      - job: Build
+        uses:
+          repositories: [wiki] # work around for security issue for pipelines to access the other repo
+        steps:
+          - task: XplatGenerateReleaseNotes@4
+            displayName: Generate Release Notes
+            inputs:
+              outputfile: "$(Build.ArtifactStagingDirectory)/releasenotes.md"
+              templateLocation: "InLine"
+              inlinetemplate: |
+                ___
+                # {{buildDetails.buildNumber}}
+
+                - Build Time: {{buildDetails.startTime}}
+                - [Pipeline]({{buildDetails._links.web.href}})
+
+                **Work Items**
+                {{#if (gt workItems.length 0)}}
+                  |Id|Type|Title|State|
+                  |-|-|-|-|
+                  {{#forEach this.workItems}}
+                  |{{this.id}}|{{lookup this.fields 'System.WorkItemType'}}|[{{lookup this.fields 'System.Title'}}]({{replace this.url "_apis/wit/workItems" "_workitems/edit"}})|{{this.fields.System.State}}|
+                  {{/forEach}}
+                {{else}}
+                  - __None__
+                {{/if}}
+
+                **Pull Requests**
+                {{#if (gt pullRequests.length 0)}}
+                  |Title|Description|Author|
+                  |-|-|-|
+                  {{#forEach this.pullRequests}}
+                  |[{{this.title}}]({{replace (replace this.url "_apis/git/repositories" "_git") "pullRequests" "pullRequest"}})|{{this.description}}|{{this.createdBy.displayName}}|
+                  {{/forEach}}
+                {{else}}
+                  - __None__
+                {{/if}}
+
+                **Test Cases**
+                {{#if (gt tests.length 0)}}
+                  |Title|Name|Outcome|Browser|Duration(ms)|Filename|
+                  |-|-|-|-|-|-|
+                  {{#forEach this.tests}}
+                  |{{this.testCase.name}}|{{this.testCaseTitle}}|{{this.outcome}}|{{this.computerName}}|{{this.durationInMs}}|{{this.automatedTestStorage}}|
+                  {{/forEach}}
+                {{else}}
+                  - __None__
+                {{/if}}
+
+                **Commits**
+                {{#if (gt commits.length 0)}}
+                  |Id|message|Author|
+                  |-|-|-|
+                  {{#forEach this.commits}}
+                  |{{this.id}}|{{get_only_message_firstline this.message}}|{{this.author.displayName}}|
+                  {{/forEach}}
+                {{else}}
+                  - __None__
+                {{/if}}
+
+                [Last Successful Release]({{compareBuildDetails._links.web.href}})
+                ___
+
+              checkStage: true # Looks for the last successful release
+              replaceFile: false
+              getParentsAndChildren: false
+              getAllParents: false
+              getIndirectPullRequests: false
+              stopOnError: true
+              considerPartiallySuccessfulReleases: false
+              checkForManuallyLinkedWI: true # Picks up items manually linked rather than via commit message
+              wiqlFromTarget: "WorkItems"
+              dumpPayloadToFile: true # useful for seeing JSON payload to update template
+
+          - bash: |
+              echo "##[debug]Markdown file contents:"
+              cat "$(Build.ArtifactStagingDirectory)/releasenotes.md"
+            displayName: cat markdown (debug) # Only useful to see the file contents before publishing
+
+          - task: WikiUpdaterTask@2
+            inputs:
+              repo: "https://christamlyn@dev.azure.com/christamlyn/release-notes/_git/release-notes.wiki"
+              branch: "wikiMaster"
+              filename: "Release-Notes/versions.md"
+              replaceFile: false
+              dataIsFile: true
+              sourceFile: "$(Build.ArtifactStagingDirectory)/releasenotes.md"
+              message: "Automatic commit from pipeline"
+              gitname: "pipeline"
+              gitemail: "pipeline@example.com"
+              useAgentToken: true
+              localpath: '$(System.DefaultWorkingDirectory)\repo'
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: ReleaseNotes
+            condition: always()
+            displayName: Publish Release Notes # Not required

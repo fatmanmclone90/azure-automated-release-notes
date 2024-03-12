@@ -1,0 +1,42 @@
+parameters:
+- name: main_branch
+  type: string
+  default: refs/heads/main
+- name: version_major
+  type: string
+- name: version_minor
+  type: string
+
+jobs:
+- ${{ if and(ne(variables['Build.SourceBranch'], parameters['main_branch']), not(startsWith(variables['Build.SourceBranch'], 'refs/tags/release/'))) }}:
+  - job: BranchBuildNumber
+    displayName: Update Build Number
+    variables:
+      ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
+        version_revision: $[counter(variables['build.sourcebranchname'], 0)]
+        version: ${{ parameters.version_major }}.${{ parameters.version_minor }}.$(version_revision)-$(Build.SourceBranchName)
+      ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+        version_revision: $[counter(variables['system.pullrequest.pullrequestid'], 0)]
+        version: ${{ parameters.version_major }}.${{ parameters.version_minor }}.$(version_revision)-PR-$(System.PullRequest.PullRequestId)
+    steps:
+    - checkout: none
+    - task: CmdLine@2
+      displayName:  Update Build Number
+      inputs:
+        script: |
+          echo '##vso[build.updatebuildnumber]$(version)';
+
+- ${{ if or(eq(variables['Build.SourceBranch'], parameters['main_branch']), startsWith(variables['Build.SourceBranch'], 'refs/tags/release/')) }}:
+  - job: MainBuildNumber
+    displayName: Update Build Number
+    variables:
+      counter: ${{ parameters.version_major }}-${{ parameters.version_minor }}
+      version_revision: $[counter(variables['counter'], 0)]
+      version: ${{ parameters.version_major }}.${{ parameters.version_minor }}.$(version_revision)
+    steps:
+    - checkout: none
+    - task: CmdLine@2
+      displayName: Update Build Number
+      inputs:
+        script: |
+          echo '##vso[build.updatebuildnumber]$(version)';
