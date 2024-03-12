@@ -24,8 +24,3 @@ https://www.wagemakers.net/posts/automatic-devops-release-notes/
 - [Example](https://github.com/rfennell/AzurePipelines/blob/main/SampleTemplates/XplatGenerateReleaseNotes%20(Node%20based)/Version%203%20(and%20later)/date_formatter.js) templates and built in helper methods
 - [Available](https://github.com/rfennell/AzurePipelines/wiki/GenerateReleaseNotes---Node-based-Cross-Platform-Task-YAML#yaml-snippet) Parameters and description.
 - Blog [example](https://www.wagemakers.net/posts/automatic-devops-release-notes/).
-
-## To Do
-
-- Look into adding a function for custom date formatting.  [Example](https://github.com/rfennell/AzurePipelines/blob/main/SampleTemplates/XplatGenerateReleaseNotes%20(Node%20based)/Version%203%20(and%20later)/date_formatter.js).
-- Investigation some formatting issues in WIKI, e.g. "None" is shown as bold.

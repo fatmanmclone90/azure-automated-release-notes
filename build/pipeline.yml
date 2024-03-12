@@ -94,7 +94,7 @@ stages:
                 ___
                 # {{buildDetails.buildNumber}}
 
-                - Build Time: {{buildDetails.startTime}}
+                - **Build Time**: {{date_formatter_iso buildDetails.startTime}}
                 - [Pipeline]({{buildDetails._links.web.href}})
 
                 **Work Items**
@@ -105,7 +105,7 @@ stages:
                   |{{this.id}}|{{lookup this.fields 'System.WorkItemType'}}|[{{lookup this.fields 'System.Title'}}]({{replace this.url "_apis/wit/workItems" "_workitems/edit"}})|{{this.fields.System.State}}|
                   {{/forEach}}
                 {{else}}
-                  - __None__
+                  - _None_
                 {{/if}}
 
                 **Pull Requests**
@@ -116,7 +116,7 @@ stages:
                   |[{{this.title}}]({{replace (replace this.url "_apis/git/repositories" "_git") "pullRequests" "pullRequest"}})|{{this.description}}|{{this.createdBy.displayName}}|
                   {{/forEach}}
                 {{else}}
-                  - __None__
+                  - _None_
                 {{/if}}
 
                 **Test Cases**
@@ -127,18 +127,18 @@ stages:
                   |{{this.testCase.name}}|{{this.testCaseTitle}}|{{this.outcome}}|{{this.computerName}}|{{this.durationInMs}}|{{this.automatedTestStorage}}|
                   {{/forEach}}
                 {{else}}
-                  - __None__
+                  - _None_
                 {{/if}}
 
                 **Commits**
                 {{#if (gt commits.length 0)}}
-                  |Id|message|Author|
+                  |Id|Message|Author|
                   |-|-|-|
                   {{#forEach this.commits}}
                   |{{this.id}}|{{get_only_message_firstline this.message}}|{{this.author.displayName}}|
                   {{/forEach}}
                 {{else}}
-                  - __None__
+                  - _None_
                 {{/if}}
 
                 [Last Successful Release]({{compareBuildDetails._links.web.href}})
@@ -154,6 +154,7 @@ stages:
               checkForManuallyLinkedWI: true # Picks up items manually linked rather than via commit message
               wiqlFromTarget: "WorkItems"
               dumpPayloadToFile: true # useful for seeing JSON payload to update template
+              customHandlebarsExtensionCodeAsFile: $(Build.sourcesdirectory)/build/functions/handlebar-functions.js
 
           - bash: |
               echo "##[debug]Markdown file contents:"
