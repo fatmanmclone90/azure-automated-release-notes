@@ -19,6 +19,10 @@ See [here](https://www.wagemakers.net/posts/automatic-devops-release-notes/) for
 
 https://www.wagemakers.net/posts/automatic-devops-release-notes/
 
+## Flow Diagram ##
+
+![alt text](diagram.png)
+
 ## Useful Links
 
 - [Example](https://github.com/rfennell/AzurePipelines/blob/main/SampleTemplates/XplatGenerateReleaseNotes%20(Node%20based)/Version%203%20(and%20later)/date_formatter.js) templates and built in helper methods
