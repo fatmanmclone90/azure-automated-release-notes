@@ -62,12 +62,17 @@ stages:
             workingDirectory: "src"
             displayName: "Run Playwright tests"
 
-          - publish: $(Build.sourcesdirectory)/src/results.xml
-            artifact: results.xml
-            condition: always()
-            displayName: Publish Test Results # Not required
+          - task: PublishPipelineArtifact@1
+            displayName: Publish JUnit Test Artifact
+            condition: succeededOrFailed()
+            inputs:
+              targetPath: "$(Build.sourcesdirectory)/src/results.xml"
+              publishLocation: "pipeline"
+              artifact: "junit-results"
 
           - task: PublishTestResults@2
+            displayName: Publish JUnit Test Results
+            condition: succeededOrFailed()
             inputs:
               testResultsFormat: "JUnit"
               testResultsFiles: $(Build.sourcesdirectory)/src/results.xml
@@ -77,6 +82,47 @@ stages:
                   echo "##[error]Forcing pipeline to fail." 
                   exit 1;
                 displayName: Run tests (fake)
+
+      - job:
+        condition: succeededOrFailed()
+        displayName: Update ADO Test Plans
+        dependsOn: Test
+        variables:
+          - name: testPlanId
+            value: 11 # must match values in ADO
+          - name: testSuiteId
+            value: 12 # must match values in ADO
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              buildType: "current"
+              artifactName: "junit-results"
+              itemPattern: "*.xml"
+              targetPath: $(Build.sourcesdirectory)/build/scripts
+            displayName: "Download Test Results"
+
+          - bash: |
+              sudo apt-get install -qq -y xmlstarlet;
+            displayNAme: Install xmlstarlet
+
+          - task: Bash@3
+            inputs:
+              filepath: $(Build.sourcesdirectory)/build/scripts/fetchTestPoints.sh
+            env:
+              accessToken: $(System.AccessToken)
+              testPlanId: $(testPlanId) # unsure why these need to be mapped
+              testSuiteId: $(testSuiteId) # unsure why these need to be mapped
+            displayName: Fetch ADO Test Points (debug)
+
+          - task: Bash@3
+            inputs:
+              filepath: $(Build.sourcesdirectory)/build/scripts/updateTestPlan.sh
+              workingDirectory: $(Build.sourcesdirectory)/build/scripts
+            env:
+              accessToken: $(System.AccessToken)
+              testPlanId: $(testPlanId) # unsure why these need to be mapped
+              testSuiteId: $(testSuiteId) # unsure why these need to be mapped
+            displayName: Update ADO Test Plan
 
   - stage: ReleaseNotes
     dependsOn: Test

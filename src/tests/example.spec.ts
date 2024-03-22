@@ -1,13 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from '../fixtures/fixtures';
 
-test('has title', async ({ page }) => {
+test('has title', async ({ page, setTestId }) => {
+  setTestId(1)
   await page.goto('https://playwright.dev/');
 
   // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle(/Playwright/);
+  await expect(page).toHaveTitle(/foo/);
 });
 
-test('get started link', async ({ page }) => {
+test('get started link', async ({ page, setTestId }) => {
+  setTestId(2)
   
   await test.step("Given the user is on the Playwright page", async () => {
     await page.goto('https://playwright.dev/');
