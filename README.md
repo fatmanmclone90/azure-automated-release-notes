@@ -53,6 +53,33 @@ test('get started link', async ({ page, setTestId }) => {
 
 ![alt text](ado-test-plan-diagram.png)
 
+## Teams Notifications
+
+To debug `teams-notification.sh` script requires:
+
+- VSCode
+- Ability to execute Bash (e.g. Windows Subsystem for Linux (WSL)
+- [Bash Debug Extension](https://marketplace.visualstudio.com/items?itemName=rogalmic.bash-debug)
+- Azure CLI (https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
+  - Note: An AzureCLI installed in Windows will be accessible from WSL.
+- JQ installed in WSL (`sudo apt-get install jq`)
+- A valid PAT token generated for the user, PAT token must have permissions to execute pipelines.
+
+1) In `./.vscode/launch.json` add valid input `args` e.g.
+
+```json
+"args": ["project" "organisation" "<web-hook-url>", "<ADO Build Id>", "qa-a", "true"],
+```
+
+- Build Id can be found in the URL of a previously executed pipeline `https://dev.azure.com/ezcorp/QA_Automation/_build/results?buildId=<Build Id>&view=results`
+
+1) Enter a PAT token for your user
+
+```bash
+"env": {"AZURE_DEVOPS_EXT_PAT":"<PAT TOKEN>"}
+```
+
+
 ## Useful Links
 
 - [Example](https://github.com/rfennell/AzurePipelines/blob/main/SampleTemplates/XplatGenerateReleaseNotes%20(Node%20based)/Version%203%20(and%20later)/date_formatter.js) templates and built in helper methods
