@@ -83,6 +83,20 @@ stages:
                   exit 1;
                 displayName: Run tests (fake)
 
+      - job: Notification
+        displayName: Send Teams notification
+        condition: and(${{ eq(parameters.reason, 'scheduled') }}, succeededOrFailed())
+        dependsOn: Test
+        steps:
+          - task: Bash@3
+            displayName: Send Teams notification
+            inputs:
+              targetType: "filePath"
+              filePath: "$(System.DefaultWorkingDirectory)/build/teams-notification.sh"
+              arguments: "'org-name' '$(System.TeamProject)' '$(teamsWebHookUrl)' '$(Build.BuildId)' '${{parameters.environment}}'"
+            env:
+              AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)
+
       - job:
         condition: succeededOrFailed()
         displayName: Update ADO Test Plans
